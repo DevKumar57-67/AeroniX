@@ -31,7 +31,7 @@ print("The lift of the aircraft is: ", plane_lift, "N")
 print("The drag of the aircraft is: ", plane_drag, "N")
 
 print("The lift to drag rati
-'''
+
 
 import math
 import csv
@@ -112,3 +112,88 @@ if __name__ == "__main__":
     S = 16            # m²
     alpha_range = range(0, 15)  # degrees
     autonomous_flight_optimizer(altitude, V, S, alpha_range)
+'''
+
+import math
+import matplotlib.pyplot as plt
+import numpy as np
+
+# ---------- Atmospheric Model ----------
+def air_density(altitude):
+    T0, P0, L, R, g = 288.15, 101325, 0.0065, 287.05, 9.80665
+    T = T0 - L * altitude
+    P = P0 * (T / T0) ** (g / (R * L))
+    rho = P / (R * T)
+    return rho
+
+# ---------- Aerodynamic Model ----------
+def coefficients(alpha_deg, CL0=0.3, a=0.1, CD0=0.02, k=0.05):
+    CL = CL0 + a * alpha_deg
+    CD = CD0 + k * (CL ** 2)
+    return CL, CD
+
+# ---------- Force Calculations ----------
+def aerodynamic_forces(V, rho, S, CL, CD):
+    L = 0.5 * rho * (V ** 2) * S * CL
+    D = 0.5 * rho * (V ** 2) * S * CD
+    return L, D
+
+# ---------- Aeron Factor ----------
+def aeron_factor(CL, CD):
+    return CL / CD
+
+# ---------- Dynamic Simulation & Visualization ----------
+def dynamic_simulation(V=75, S=16, altitudes=[0, 2000, 5000]):
+    alpha_range = np.linspace(0, 14, 30)  # AoA range (0°–14°)
+
+    plt.figure(figsize=(10, 8))
+
+    for altitude in altitudes:
+        rho = air_density(altitude)
+        AF_list, Lift_list, Drag_list = [], [], []
+
+        for alpha in alpha_range:
+            CL, CD = coefficients(alpha)
+            L, D = aerodynamic_forces(V, rho, S, CL, CD)
+            AF = aeron_factor(CL, CD)
+            AF_list.append(AF)
+            Lift_list.append(L)
+            Drag_list.append(D)
+
+        # Plot Aeron Factor Curve
+        plt.plot(alpha_range, AF_list, label=f'Altitude: {altitude} m')
+
+    plt.title("Aeron Factor vs Angle of Attack")
+    plt.xlabel("Angle of Attack (°)")
+    plt.ylabel("Aeron Factor (Cl/Cd)")
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+    # Optional: Secondary plots for Lift and Drag
+    plt.figure(figsize=(10, 8))
+    for altitude in altitudes:
+        rho = air_density(altitude)
+        L_list, D_list = [], []
+        for alpha in alpha_range:
+            CL, CD = coefficients(alpha)
+            L, D = aerodynamic_forces(V, rho, S, CL, CD)
+            L_list.append(L)
+            D_list.append(D)
+        plt.plot(alpha_range, L_list, label=f'Lift @ {altitude} m')
+        plt.plot(alpha_range, D_list, linestyle='--', label=f'Drag @ {altitude} m')
+
+    plt.title("Lift & Drag vs Angle of Attack")
+    plt.xlabel("Angle of Attack (°)")
+    plt.ylabel("Force (N)")
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+# ---------- Run Dynamic Visualization ----------
+if __name__ == "__main__":
+    dynamic_simulation(
+        V=75, 
+        S=16, 
+        altitudes=[0, 2000, 5000]
+    )
